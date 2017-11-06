@@ -178,7 +178,7 @@ def hmm_tag_sentence(sentence):
     Return a list of (word, predicted_tag) pairs.
     """
     # fill in the Viterbi chart
-    ...
+    v = viterbi(sentence)
     
     # then retrace your steps from the best way to end the sentence, following backpointers
     ...
@@ -201,8 +201,12 @@ def viterbi(sentence):
     """
     # make a dummy item with a START tag, no predecessor, and log probability 0
     # current list = [ the dummy item ]
-    current = ...
+    current = ('START', None, log(0))
+    currentList=[current]
     
+
+            
+
     # for each word in the sentence:
     #    previous list = current list
     #    current list = []        
@@ -211,16 +215,29 @@ def viterbi(sentence):
     #    for each tag of the possible tags:
     #         add the highest-scoring item with this tag to the current list
     
-    ...
+    for word in sentence:
+        prevList=currentList
+        currentList=[]
+        if word[0] in perWordTagCounts:
+            tagList=perWordTagCounts[word[0]].keys()
+        else:
+            tagList=allTagCounts.keys()
+        
+        for tag in tagList:
+            currentList.append(find_best_item(word, tag, prevList))
 
     # end the sequence with a dummy: the highest-scoring item with the tag END
-    return ...
+    return find_best_item(END, 'END', currentList)
     
 def find_best_item(word, tag, possible_predecessors):    
     # determine the emission probability: 
     #  the probability that this tag will emit this word
     
-    ...
+    if tag not in emissionDists:
+        tag='UNK'
+    if word not in emissionDists[tag]:
+        word='UNK'
+    emissionProb=emissionDists[tag][word]
     
     # find the predecessor that gives the highest total log probability,
     #  where the total log probability is the sum of
@@ -229,10 +246,16 @@ def find_best_item(word, tag, possible_predecessors):
     #       predecessor to the current tag,
     #    3) the total log probability of the predecessor
     
-    ...
+    bestProb=0
+    bp=None
+    for item in possible_predecessors:
+        p=emissionProb+transitionDists[item[0]]+item[2]
+        if p>bestProb:
+            bestProb=p
+            bp=item
     
     # return a new item (tag, best predecessor, best total log probability)
-    return ...
+    return (tag, bp, bestProb)
 
 def retrace(end_item, sentence_length):
     # tags = []
