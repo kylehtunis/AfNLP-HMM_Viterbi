@@ -76,20 +76,69 @@ def learn(tagged_sentences):
     """
 
     # store training data counts in allTagCounts, perWordTagCounts, transitionCounts, emissionCounts
-    for word in tagged_sentences:
-        word=word[0]
-#        print(word)
-        allTagCounts[word[1]]+=1
-        if word[0] not in perWordTagCounts.keys():
-            perWordTagCounts[word[0]]=Counter()
-        perWordTagCounts[word[0]][word[1]]+=1
-        
+    for sentence in tagged_sentences:
+        prev=sentence[0]
+        for word in sentence[1:]:
+#            print(word)
+            allTagCounts[word[1]]+=1
+            
+            if word[0] not in perWordTagCounts.keys():
+                perWordTagCounts[word[0]]=Counter()
+            perWordTagCounts[word[0]][word[1]]+=1
+            
+            if prev[1] not in transitionCounts.keys():
+                transitionCounts[prev[1]]=Counter()
+            transitionCounts[prev[1]][word[1]]+=1
+            
+            if word[1] not in emissionCounts.keys():
+                emissionCounts[word[1]]=Counter()
+            emissionCounts[word[1]][word[0]]+=1
     
     # add pseudocounts in transitionCounts and emissionCounts, including for UNK
-    ...
+    for sentence in tagged_sentences:
+        s=(START, 'START')
+        e=(END, 'END')
+        wordS=sentence[0]
+        wordE=sentence[-1]
+        
+        if s[1] not in transitionCounts.keys():
+            transitionCounts[s[1]]=Counter()
+        transitionCounts[s[1]][wordS[1]]+=1
+        if s[1] not in emissionCounts.keys():
+            emissionCounts[s[1]]=Counter()
+        emissionCounts[s[1]][s[0]]+=1
+        if e[1] not in transitionCounts.keys():
+            transitionCounts[e[1]]=Counter()
+        transitionCounts[e[1]][wordE[1]]+=1
+        if e[1] not in emissionCounts.keys():
+            emissionCounts[e[1]]=Counter()
+        emissionCounts[e[1]][e[0]]+=1
+        
+    transitionCounts['UNK']=Counter()
+    emissionCounts['UNK']=Counter()
+    
+    #add-alpha smoothing
+    for tag in transitionCounts:
+        for tag1 in transitionCounts[tag]:
+            transitionCounts[tag][tag1]+=.1
+        transitionCounts[tag]['UNK']+=.1
+    for tag in emissionCounts:
+        for word in emissionCounts[tag]:
+            emissionCounts[tag][word]+=.1
+        emissionCounts[tag]['UNK']+=.1
+        
 
     # normalize counts and store log probability distributions in transitionDists and emissionDists
-    ...
+    for tag in transitionCounts:
+        total=sum(transitionCounts[tag].values())
+        transitionDists[tag]={}
+        for tag1 in transitionCounts[tag]:
+            transitionDists[tag][tag1]=log(transitionCounts[tag][tag1]/total)
+    for tag in emissionCounts:
+        total=sum(emissionCounts[tag].values())
+        emissionDists[tag]={}
+        for word in emissionCounts[tag]:
+            emissionDists[tag][word]=log(emissionCounts[tag][word]/total)
 
 def baseline_tag_sentence(sentence):
     """
@@ -105,13 +154,12 @@ def baseline_tag_sentence(sentence):
     predictions=[]
     for word in sentence:
         word=word[0]
-        print(word)
         if word in perWordTagCounts.keys():
             pred = max(k for k, v in perWordTagCounts[word].items())
             predictions.append((word, pred))
         else:
             predictions.append((word, max(k for k, v in allTagCounts.items())))
-    print(predictions)
+#    print(predictions)
     return predictions
 
 def hmm_tag_sentence(sentence):
