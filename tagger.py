@@ -76,7 +76,14 @@ def learn(tagged_sentences):
     """
 
     # store training data counts in allTagCounts, perWordTagCounts, transitionCounts, emissionCounts
-    ...
+    for word in tagged_sentences:
+        word=word[0]
+#        print(word)
+        allTagCounts[word[1]]+=1
+        if word[0] not in perWordTagCounts.keys():
+            perWordTagCounts[word[0]]=Counter()
+        perWordTagCounts[word[0]][word[1]]+=1
+        
     
     # add pseudocounts in transitionCounts and emissionCounts, including for UNK
     ...
@@ -95,8 +102,17 @@ def baseline_tag_sentence(sentence):
     Do NOT modify the contents of 'sentence'.
     Return a list of (word, predicted_tag) pairs.
     """
-    ...
-    return ...
+    predictions=[]
+    for word in sentence:
+        word=word[0]
+        print(word)
+        if word in perWordTagCounts.keys():
+            pred = max(k for k, v in perWordTagCounts[word].items())
+            predictions.append((word, pred))
+        else:
+            predictions.append((word, max(k for k, v in allTagCounts.items())))
+    print(predictions)
+    return predictions
 
 def hmm_tag_sentence(sentence):
     """
@@ -193,7 +209,7 @@ TRAIN_DATA = 'en-ud-train.upos.tsv'
 TEST_DATA = 'en-ud-test.upos.tsv'
 
 train_sentences = read_tagged_corpus(TRAIN_DATA)
-print(train_sentences)
+#print(train_sentences)
 
 
 # train the bigram HMM tagger & baseline tagger in one fell swoop
@@ -249,7 +265,7 @@ def render_pred_tag(x):
 
 
 test_sentences = read_tagged_corpus(TEST_DATA)
-print(test_sentences)
+#print(test_sentences)
 
 nTokens = nCorrect = nOOV = nCorrectOOV = nPerfectSents = nPGoldGreater = nPPredGreater = 0
 
