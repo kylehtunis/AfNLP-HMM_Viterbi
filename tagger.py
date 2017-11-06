@@ -78,7 +78,7 @@ def learn(tagged_sentences):
     # store training data counts in allTagCounts, perWordTagCounts, transitionCounts, emissionCounts
     for sentence in tagged_sentences:
         prev=sentence[0]
-        allTagCounts[prev[0]]+=1
+        allTagCounts[prev[1]]+=1
         if prev[0] not in perWordTagCounts.keys():
             perWordTagCounts[prev[0]]=Counter()
         perWordTagCounts[prev[0]][prev[1]]+=1
@@ -108,7 +108,7 @@ def learn(tagged_sentences):
         s=(START, 'START')
         e=(END, 'END')
         wordS=sentence[0]
-        wordE=sentence[-1]
+#        wordE=sentence[-1]
         
         if s[1] not in transitionCounts.keys():
             transitionCounts[s[1]]=Counter()
@@ -116,9 +116,9 @@ def learn(tagged_sentences):
         if s[1] not in emissionCounts.keys():
             emissionCounts[s[1]]=Counter()
         emissionCounts[s[1]][s[0]]+=1
-        if e[1] not in transitionCounts.keys():
-            transitionCounts[e[1]]=Counter()
-        transitionCounts[e[1]][wordE[1]]+=1
+#        if e[1] not in transitionCounts.keys():
+#            transitionCounts[e[1]]=Counter()
+#        transitionCounts[e[1]][wordE[1]]+=1
         if e[1] not in emissionCounts.keys():
             emissionCounts[e[1]]=Counter()
         emissionCounts[e[1]][e[0]]+=1
@@ -128,11 +128,11 @@ def learn(tagged_sentences):
     
     #add-alpha smoothing
     for tag in transitionCounts:
-        for tag1 in transitionCounts[tag]:
+        for tag1 in allTagCounts:
             transitionCounts[tag][tag1]+=.1
         transitionCounts[tag]['UNK']+=.1
     for tag in emissionCounts:
-        for word in emissionCounts[tag]:
+        for word in allTagCounts:
             emissionCounts[tag][word]+=.1
         emissionCounts[tag]['UNK']+=.1
         
@@ -181,11 +181,19 @@ def hmm_tag_sentence(sentence):
     v = viterbi(sentence)
     
     # then retrace your steps from the best way to end the sentence, following backpointers
-    ...
+    words=[]
+    i=len(sentence)-1
+    v=v[1]
+    while v[1] is not None:
+#        print(v)
+        words.insert(0, (sentence[i][0], v[0]))
+#        print(words)
+        i-=1
+        v=v[1]
     
     # finally return the list of tagged words
     
-    return ...
+    return words
 
 
 
@@ -201,7 +209,7 @@ def viterbi(sentence):
     """
     # make a dummy item with a START tag, no predecessor, and log probability 0
     # current list = [ the dummy item ]
-    current = ('START', None, log(0))
+    current = ('START', None, 0)
     currentList=[current]
     
 
@@ -227,11 +235,12 @@ def viterbi(sentence):
             currentList.append(find_best_item(word, tag, prevList))
 
     # end the sequence with a dummy: the highest-scoring item with the tag END
-    return find_best_item(END, 'END', currentList)
+    return ('END', max(currentList, key=lambda item:item[2]), 0)
     
 def find_best_item(word, tag, possible_predecessors):    
     # determine the emission probability: 
     #  the probability that this tag will emit this word
+#    print(word, ' ', tag, ' ', possible_predecessors)
     
     if tag not in emissionDists:
         tag='UNK'
@@ -249,23 +258,29 @@ def find_best_item(word, tag, possible_predecessors):
     bestProb=0
     bp=None
     for item in possible_predecessors:
-        p=emissionProb+transitionDists[item[0]]+item[2]
-        if p>bestProb:
+#        print(item)
+#        print(tag)
+        p=emissionProb+transitionDists[item[0]][tag]+item[2]
+#        print(p)
+        if p<bestProb:
             bestProb=p
             bp=item
     
     # return a new item (tag, best predecessor, best total log probability)
-    return (tag, bp, bestProb)
+    item=(tag, bp, bestProb)
+#    print(possible_predecessors)
+#    print(item)
+    return item
 
-def retrace(end_item, sentence_length):
-    # tags = []
-    # item = predecessor of end_item
-    # while the tag of the item isn't START:
-    #     add the tag of item to tags
-    #     item = predecessor of item
-    # reverse the list of tags and return it
-    ...
-    return ...
+#def retrace(end_item, sentence_length):
+#    # tags = []
+#    # item = predecessor of end_item
+#    # while the tag of the item isn't START:
+#    #     add the tag of item to tags
+#    #     item = predecessor of item
+#    # reverse the list of tags and return it
+#    ...
+#    return ...
 
 def joint_prob(sentence):
     """Compute the joint probability of the given words and tags under the HMM model."""
@@ -274,6 +289,11 @@ def joint_prob(sentence):
     prev=(START, 'START')
     p+=emissionDists[prev[1]][prev[0]]
     for word in sentence:
+        if word[0] not in emissionDists[word[1]]:
+            word=('UNK', word[1])
+        if word[1] not in allTagCounts:
+            word=(word[0], 'UNK')
+#        print(word)
         p+=transitionDists[prev[1]][word[1]]
         p+=emissionDists[word[1]][word[0]]
     
@@ -285,8 +305,24 @@ def count_correct(gold_sentence, pred_sentence):
     return the number of tokens that were tagged correctly overall, 
     the number of OOV tokens tagged correctly, 
     and the total number of OOV tokens."""
+    print(gold_sentence)
+    print(pred_sentence)
     assert len(gold_sentence)==len(pred_sentence)
-    ...
+    
+    correct=0
+    correctOOV=0
+    OOV=0
+    
+    for i in range(len(gold_sentence)):
+        gold=gold_sentence[i]
+        pred=pred_sentence[i]
+        if gold[1]==pred[1]:
+            correct+=1
+            if pred[0] not in perWordTagCounts:
+                correctOOV+=1
+        if pred[0] not in perWordTagCounts:
+            OOV+=1
+    
     return correct, correctOOV, OOV
 
 
@@ -373,7 +409,7 @@ for sent in test_sentences:
     
     if pHMMGold > pHMMPred:
         nPGoldGreater += 1
-        #assert False
+#        assert False
     elif pHMMGold < pHMMPred:
         nPPredGreater += 1
     
