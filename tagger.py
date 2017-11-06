@@ -78,6 +78,13 @@ def learn(tagged_sentences):
     # store training data counts in allTagCounts, perWordTagCounts, transitionCounts, emissionCounts
     for sentence in tagged_sentences:
         prev=sentence[0]
+        allTagCounts[prev[0]]+=1
+        if prev[0] not in perWordTagCounts.keys():
+            perWordTagCounts[prev[0]]=Counter()
+        perWordTagCounts[prev[0]][prev[1]]+=1
+        if prev[1] not in emissionCounts.keys():
+            emissionCounts[prev[1]]=Counter()
+        emissionCounts[prev[1]][prev[0]]+=1
         for word in sentence[1:]:
 #            print(word)
             allTagCounts[word[1]]+=1
@@ -93,6 +100,8 @@ def learn(tagged_sentences):
             if word[1] not in emissionCounts.keys():
                 emissionCounts[word[1]]=Counter()
             emissionCounts[word[1]][word[0]]+=1
+            
+            prev=word
     
     # add pseudocounts in transitionCounts and emissionCounts, including for UNK
     for sentence in tagged_sentences:
@@ -238,7 +247,13 @@ def retrace(end_item, sentence_length):
 def joint_prob(sentence):
     """Compute the joint probability of the given words and tags under the HMM model."""
     p = 0   # joint log prob. of words and tags
-    ...
+    
+    prev=(START, 'START')
+    p+=emissionDists[prev[1]][prev[0]]
+    for word in sentence:
+        p+=transitionDists[prev[1]][word[1]]
+        p+=emissionDists[word[1]][word[0]]
+    
     assert isfinite(p) and p<0  # Should be negative
     return p
 
