@@ -231,11 +231,15 @@ def viterbi(sentence):
         currentList=[]
         if word[0] in perWordTagCounts:
             tagList=list(perWordTagCounts[word[0]].keys())
+            if len(tagList)==1 and 'X' in tagList:
+                tagList=list(allTagCounts.keys())
         else:
             tagList=list(allTagCounts.keys())
-            tagList.remove('X')
+#            tagList.remove('X')
         
         for tag in tagList:
+            if tag=='X':
+                continue
             currentList.append(find_best_item(word, tag, prevList))
 
     # end the sequence with a dummy: the highest-scoring item with the tag END
@@ -245,12 +249,14 @@ def find_best_item(word, tag, possible_predecessors):
     # determine the emission probability: 
     #  the probability that this tag will emit this word
 #    print(word, ' ', tag, ' ', possible_predecessors)
-    
+    word=word[0]
+#    print(tag, ' ', word)
     if tag not in emissionDists:
         tag='UNK'
     if word not in emissionDists[tag]:
         word='UNK'
     emissionProb=emissionDists[tag][word]
+#    print(tag, ' ', word, ' ', emissionProb)
     
     # find the predecessor that gives the highest total log probability,
     #  where the total log probability is the sum of
@@ -315,8 +321,8 @@ def count_correct(gold_sentence, pred_sentence):
     return the number of tokens that were tagged correctly overall, 
     the number of OOV tokens tagged correctly, 
     and the total number of OOV tokens."""
-    print(gold_sentence)
-    print(pred_sentence)
+#    print(gold_sentence)
+#    print(pred_sentence)
     assert len(gold_sentence)==len(pred_sentence)
     
     correct=0
