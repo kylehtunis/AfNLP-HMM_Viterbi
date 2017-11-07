@@ -161,13 +161,16 @@ def baseline_tag_sentence(sentence):
     Return a list of (word, predicted_tag) pairs.
     """
     predictions=[]
+    print(allTagCounts)
     for word in sentence:
         word=word[0]
         if word in perWordTagCounts.keys():
-            pred = max(k for k, v in perWordTagCounts[word].items())
+            pred=max(perWordTagCounts[word], key=lambda k:perWordTagCounts[word][k])
             predictions.append((word, pred))
         else:
-            predictions.append((word, max(k for k, v in allTagCounts.items())))
+            pred=max(allTagCounts, key=lambda k:allTagCounts[k])
+            print(pred)
+            predictions.append((word, pred))
 #    print(predictions)
     return predictions
 
@@ -179,11 +182,11 @@ def hmm_tag_sentence(sentence):
     """
     # fill in the Viterbi chart
     v = viterbi(sentence)
-    
     # then retrace your steps from the best way to end the sentence, following backpointers
     words=[]
     i=len(sentence)-1
     v=v[1]
+#    print(v)
     while v[1] is not None:
 #        print(v)
         words.insert(0, (sentence[i][0], v[0]))
@@ -227,9 +230,10 @@ def viterbi(sentence):
         prevList=currentList
         currentList=[]
         if word[0] in perWordTagCounts:
-            tagList=perWordTagCounts[word[0]].keys()
+            tagList=list(perWordTagCounts[word[0]].keys())
         else:
-            tagList=allTagCounts.keys()
+            tagList=list(allTagCounts.keys())
+            tagList.remove('X')
         
         for tag in tagList:
             currentList.append(find_best_item(word, tag, prevList))
@@ -255,18 +259,18 @@ def find_best_item(word, tag, possible_predecessors):
     #       predecessor to the current tag,
     #    3) the total log probability of the predecessor
     
-    bestProb=0
+    bestProb=float('-inf')
     bp=None
     for item in possible_predecessors:
 #        print(item)
 #        print(tag)
         p=emissionProb+transitionDists[item[0]][tag]+item[2]
 #        print(p)
-        if p<bestProb:
+        if p>bestProb:
             bestProb=p
             bp=item
     
-    # return a new item (tag, best predecessor, best total log probability)
+#     return a new item (tag, best predecessor, best total log probability)
     item=(tag, bp, bestProb)
 #    print(possible_predecessors)
 #    print(item)
@@ -286,9 +290,14 @@ def joint_prob(sentence):
     """Compute the joint probability of the given words and tags under the HMM model."""
     p = 0   # joint log prob. of words and tags
     
-    prev=(START, 'START')
+    prev=sentence[0]
+    if prev[0] not in emissionDists[prev[1]]:
+        prev=('UNK', prev[1])
+    if prev[1] not in allTagCounts:
+        prev=(prev[0], 'UNK')
+#    print(prev)
     p+=emissionDists[prev[1]][prev[0]]
-    for word in sentence:
+    for word in sentence[1:]:
         if word[0] not in emissionDists[word[1]]:
             word=('UNK', word[1])
         if word[1] not in allTagCounts:
@@ -297,6 +306,7 @@ def joint_prob(sentence):
         p+=transitionDists[prev[1]][word[1]]
         p+=emissionDists[word[1]][word[0]]
     
+#    print(p)
     assert isfinite(p) and p<0  # Should be negative
     return p
 
