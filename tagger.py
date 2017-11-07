@@ -161,7 +161,7 @@ def baseline_tag_sentence(sentence):
     Return a list of (word, predicted_tag) pairs.
     """
     predictions=[]
-    print(allTagCounts)
+#    print(allTagCounts)
     for word in sentence:
         word=word[0]
         if word in perWordTagCounts.keys():
@@ -169,7 +169,7 @@ def baseline_tag_sentence(sentence):
             predictions.append((word, pred))
         else:
             pred=max(allTagCounts, key=lambda k:allTagCounts[k])
-            print(pred)
+#            print(pred)
             predictions.append((word, pred))
 #    print(predictions)
     return predictions
@@ -238,7 +238,7 @@ def viterbi(sentence):
 #            tagList.remove('X')
         
         for tag in tagList:
-            if tag=='X':
+            if tag=='X' or tag=='XX':
                 continue
             currentList.append(find_best_item(word, tag, prevList))
 
@@ -316,6 +316,9 @@ def joint_prob(sentence):
     assert isfinite(p) and p<0  # Should be negative
     return p
 
+incorrectByTag=Counter()
+incorrectByTagOOV=Counter()
+
 def count_correct(gold_sentence, pred_sentence):
     """Given a gold-tagged sentence and the same sentence with predicted tags,
     return the number of tokens that were tagged correctly overall, 
@@ -336,6 +339,10 @@ def count_correct(gold_sentence, pred_sentence):
             correct+=1
             if pred[0] not in perWordTagCounts:
                 correctOOV+=1
+        else:
+            incorrectByTag[gold[1]]+=1
+            if pred[0] not in perWordTagCounts:
+                incorrectByTagOOV[gold[1]]+=1
         if pred[0] not in perWordTagCounts:
             OOV+=1
     
@@ -425,6 +432,8 @@ for sent in test_sentences:
     
     if pHMMGold > pHMMPred:
         nPGoldGreater += 1
+#        print(pHMMGold, ' '.join(map(render_gold_tag, zip(sent,pred_tagging))))
+#        print(pHMMPred, ' '.join(map(render_pred_tag, zip(sent,pred_tagging))), '{:.0%}'.format(acc))
 #        assert False
     elif pHMMGold < pHMMPred:
         nPPredGreater += 1
@@ -442,4 +451,6 @@ print('TAGGING ACCURACY BY TOKEN: {}/{} = {:.1%}   OOV TOKENS: {}/{} = {:.1%}   
             nPGoldGreater, nPPredGreater))
 print('RUNTIME: TRAINING = {:.2}s, TAGGING = {:.2}s'.format(trainingTime, taggingTime))
 
+#print(incorrectByTag)
+#print(incorrectByTagOOV)
 
